@@ -42,20 +42,21 @@ def analyze_ticker(ticker: yf.Ticker) -> list[str]:
     currentPrice = info.get('currentPrice')
     # the highest price a buyer is ready to pay
     bid = info.get('bid')
-    currentPrice = info.get('currentPrice')
     # the lowest price a seller is ready to accept
     ask = info.get('ask')
     fifty_two_week_low = info.get('fiftyTwoWeekLow')
+    dayLow = info.get('dayLow')
+    dayHigh = info.get('dayHigh')
     yearly_range = fifty_two_week_high - fifty_two_week_low
     assert yearly_range > 0
-    if bid > fifty_two_week_high:
-        recommendations.append('sell, all time high')
-    if bid > fifty_two_week_high - (yearly_range * high_low_proximity_percent / 100):
+    if dayHigh == fifty_two_week_high or bid > fifty_two_week_high:
+        recommendations.append('sell, 1y high')
+    elif bid > fifty_two_week_high - (yearly_range * high_low_proximity_percent / 100):
         recommendations.append('sell, close to high')
-    if ask < fifty_two_week_low + (yearly_range * high_low_proximity_percent / 100):
+    if dayLow == fifty_two_week_low or ask < fifty_two_week_low:
+        recommendations.append('buy, 1y low')
+    elif ask < fifty_two_week_low + (yearly_range * high_low_proximity_percent / 100):
         recommendations.append('buy, close to low')
-    if ask < fifty_two_week_low:
-        recommendations.append('buy, all time low')
     return recommendations
 
 def process_tickers(logger: logging.Logger, tickers: set[str]) -> None:
@@ -66,26 +67,28 @@ def process_tickers(logger: logging.Logger, tickers: set[str]) -> None:
     tkrs.history(period='1d', repair=True, progress=False)
 
     # Define the headers for the table
-    headers = ['TKR', 'Low52w', 'Bid', 'Price', 'Ask', 'High52w', 'Thoughts']
+    headers = [
+        'TKR', 'Low1y', 'Low1d', 'Bid', 'Price', 'Ask', 'High1d', 'High1y',
+        'Change', 'Change %', 'Thoughts'
+    ]
     table_data = []
     for ticker in tkrs.tickers.values():
         info = ticker.info
-        fifty_two_week_high = info.get('fiftyTwoWeekHigh')
-        currentPrice = info.get('currentPrice')
-        # the highest price a buyer is ready to pay
-        bid = info.get('bid')
-        currentPrice = info.get('currentPrice')
-        # the lowest price a seller is ready to accept
-        ask = info.get('ask')
-        fifty_two_week_low = info.get('fiftyTwoWeekLow')
+        #print(info)
         table_data.append(
             [
                 ticker.ticker,
-                fifty_two_week_low,
-                bid,
-                currentPrice,
-                ask,
-                fifty_two_week_high,
+                info.get('fiftyTwoWeekLow'),
+                info.get('dayLow'),
+                # the highest price a buyer is ready to pay
+                info.get('bid'),
+                info.get('currentPrice'),
+                # the lowest price a seller is ready to accept
+                info.get('ask'),
+                info.get('dayHigh'),
+                info.get('fiftyTwoWeekHigh'),
+                info.get('regularMarketChange'),
+                info.get('regularMarketChangePercent'),
                 '; '.join(analyze_ticker(ticker))
             ]
         )
