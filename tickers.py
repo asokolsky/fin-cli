@@ -13,8 +13,19 @@ headers = (
     'High1y',
     'Change',
     'Change %',
-    'Thoughts'
+    'Thoughts',
 )
+header2ticker_info = {
+    'Low1y': 'fiftyTwoWeekLow',
+    'Low1d': 'dayLow',
+    'Bid': 'bid',
+    'Price': 'currentPrice',
+    'Ask': 'ask',
+    'High1d': 'dayHigh',
+    'High1y': 'fiftyTwoWeekHigh',
+    'Change': 'regularMarketChange',
+    'Change %': 'regularMarketChangePercent',
+}
 
 
 def load_tickers(fname: str) -> set[str]:
