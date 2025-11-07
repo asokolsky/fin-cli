@@ -5,8 +5,12 @@ import typing
 import yfinance as yf
 from rich.text import Text
 from textual.app import App, ComposeResult
-from textual.widgets import DataTable, Footer, Header
+from textual.containers import Horizontal
 from textual.events import Idle, Timer
+from textual.message import Message
+from textual.widgets import DataTable, Footer, Header, Label
+from textual import work
+from textual.worker import Worker, get_current_worker
 
 from tickers import analyze_ticker, header2ticker_info, headers, load_tickers
 
@@ -21,6 +25,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
 
+# Screen {
+#    align: center middle;
+# }
+CSS = """
+Horizontal#footer-outer {
+    height: 1;
+    dock: bottom;
+}
+Horizonal#footer-inner {
+    width: 66%;
+    dock: right;
+}
+Label#status {
+    width: 33%;
+    text-align: left;
+    dock: left;
+}
+"""
+
+class TaskCompleteMessage(Message):
+    """A message indicating the background task is complete."""
+    pass
 
 class TheApp(App):
     """
@@ -37,12 +63,7 @@ class TheApp(App):
 
     TITLE = 'Ticker Analyzer'
     SUB_TITLE = 'The most important app you will ever need'
-
-    #CSS = """
-    #Screen {
-    #    align: center middle;
-    #}
-    #"""
+    CSS = CSS
 
     BINDINGS: typing.ClassVar = [
         ('q', 'quit_app', 'Quit'),
@@ -56,7 +77,11 @@ class TheApp(App):
         logger.debug('compose %s', self)
         yield Header()
         yield DataTable(cursor_type='row', zebra_stripes=True)
-        yield Footer()
+        with Horizontal(id='footer-outer'):
+            yield Label('This is the left side label', id='status')
+            with Horizontal(id='footer-inner'):
+                yield Footer(id='footer')
+        # yield Footer()
         return
 
     def on_mount(self) -> None:
@@ -70,15 +95,21 @@ class TheApp(App):
             # add rows with ticker only and set row key
             for ticker in tickers:
                 row = [ticker if h == headers[0] else '.' for h in headers]
-                table.add_row(*row, key=ticker)  # label=ticker
+                table.add_row(*row, key=ticker)
             return
 
         self.column_index_selected = 0
         self.column_sort_reverse = False
         self.tickers = load_tickers('tickers.txt')
         self.table = self.query_one(DataTable)
-        self.footer = self.query_one(Footer)
+        self.status = self.query_one('#status')
+        self.footer_inner = self.query_one('#footer-inner')
+        self.footer = self.query_one('#footer')
         fill_table(self.table, headers, sorted(self.tickers))
+
+        # adjust footer status styles
+        self.status.styles.background = self.footer.styles.background
+        self.status.styles.color = self.footer.styles.color
         return
 
     def on_data_table_header_selected(self, message: DataTable.HeaderSelected) -> None:
@@ -117,8 +148,23 @@ class TheApp(App):
         Update the values for tickers
         """
         logger.debug('action_update %s', self)
-        tkrs = yf.Tickers(list(self.tickers))
-        tkrs.history(period='1d', repair=True, progress=False)
+        self.status.styles.width = '75%'
+        self.footer_inner.styles.width = '25%'
+        self.status.update('Updating...')
+        self.run_long_task()
+        return
+
+    @work(exclusive=True, thread=True)
+    def run_long_task(self) -> None:
+        """Download ticker info in the background."""
+        self.tkrs = yf.Tickers(list(self.tickers))
+        self.tkrs.history(period='1d', repair=True, progress=False)
+
+        self.post_message(TaskCompleteMessage())
+        return
+
+    def on_task_complete_message(self, message: TaskCompleteMessage) -> None:
+        self.notify("Background task finished!")
 
         def update_table(table: DataTable, tkrs) -> None:
             for ticker in tkrs.tickers.values():
@@ -128,9 +174,18 @@ class TheApp(App):
                     table.update_cell(ticker.ticker, k, info.get(v))
             return
 
-        update_table(self.table, tkrs)
-        logger.debug('action_update - DONE')
+        update_table(self.table, self.tkrs)
+        self.status.styles.width = '25%'
+        self.footer_inner.styles.width = '75%'
+        self.status.update('Updated')
+        logger.debug('action_update DONE')
         return
+
+    def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
+        """Called when the worker state changes."""
+        logger.debug('on_worker_state_changed %s', event)
+        return
+
 
     def action_increase_font_size(self) -> None:
         logger.debug('action_increase_font_size %s', self)
