@@ -6,7 +6,17 @@ Few CLIs to get data and act on these quick, e.g.:
 uv run python min-max.py
 ```
 
-TODO: use [textual](https://github.com/Textualize/textual)
+Also playing with the use of [textual](https://github.com/Textualize/textual)
+to create a console TUI.
+
+To run textual demo:
+```sh
+uv run python -m textual
+```
+
+```sh
+uv run python3 main.py
+```
 
 ## Dependencies
 

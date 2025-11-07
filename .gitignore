@@ -168,3 +168,4 @@ cython_debug/
 uv.lock
 # No need to duplicate what's in pyproject.toml
 .python-version
+*.log
