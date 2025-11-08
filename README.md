@@ -6,14 +6,7 @@ Few CLIs to get data and act on these quick, e.g.:
 uv run python min-max.py
 ```
 
-Also playing with the use of [textual](https://github.com/Textualize/textual)
-to create a console TUI.
-
-To run textual demo:
-```sh
-uv run python -m textual
-```
-
+Also playing with the use of [textual](https://github.com/Textualize/textual) to create a console TUI:
 ```sh
 uv run python3 main.py
 ```
@@ -21,8 +14,16 @@ uv run python3 main.py
 ## Dependencies
 
 * [yfinance](https://github.com/ranaroussi/yfinance) -  consider alternative [stockdex](https://github.com/ahnazary/stockdex).
+* [textual](https://textual.textualize.io/)
 
-## yfinance
+### textual
+
+To run textual demo:
+```sh
+uv run python -m textual
+```
+
+### yfinance
 
 Cache location:
 

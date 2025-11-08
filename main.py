@@ -10,17 +10,17 @@ from textual.events import Idle, Timer
 from textual.message import Message
 from textual.widgets import DataTable, Footer, Header, Label
 from textual import work
-from textual.worker import Worker, get_current_worker
+from textual.worker import Worker
 
 from tickers import analyze_ticker, header2ticker_info, headers, load_tickers
 
 logging.basicConfig(
     filename='main.log',
     encoding='utf-8',
-    filemode='a',
+    filemode='a', # 'w'
+    datefmt='%H:%M:%S',
     format='{asctime} {levelname} {message}',
     style='{',
-    datefmt='%Y-%m-%d %H:%M',
 )
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
@@ -61,7 +61,7 @@ class TheApp(App):
     8. Use yfinance to fetch ticker data
     """
 
-    TITLE = 'Ticker Analyzer'
+    TITLE = 'Stock Analyzer'
     SUB_TITLE = 'The most important app you will ever need'
     CSS = CSS
 
@@ -75,13 +75,13 @@ class TheApp(App):
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
         logger.debug('compose %s', self)
+        self.tkrs: yf.Tickers | None = None
         yield Header()
         yield DataTable(cursor_type='row', zebra_stripes=True)
         with Horizontal(id='footer-outer'):
             yield Label('This is the left side label', id='status')
             with Horizontal(id='footer-inner'):
                 yield Footer(id='footer')
-        # yield Footer()
         return
 
     def on_mount(self) -> None:
@@ -113,7 +113,9 @@ class TheApp(App):
         return
 
     def on_data_table_header_selected(self, message: DataTable.HeaderSelected) -> None:
-        """Handles a click on a column header."""
+        """
+        Handles a click on a column header.
+        """
         logger.debug('on_data_table_header_selected %s', message)
 
         if self.column_index_selected != message.column_index:
@@ -128,15 +130,30 @@ class TheApp(App):
             logger.error('Error sorting table: %s', exc)
         return
 
-    def on_timer(self, message: Timer) -> None:
-        """Handles a Timer event."""
-        logger.debug('on_timer %s', message)
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        """
+        Row in the DataTable is highlighted.
+        """
+        row_key = event.row_key
+        logger.debug("Row highlighted: %s", row_key.value)
+        if self.tkrs is not None:
+            ticker = self.tkrs.tickers.get(row_key.value)
+            if ticker is not None:
+                logger.debug("Ticker: %s", ticker)
+                self.set_status(ticker.info['longName'])
+                return
+        self.set_status(row_key.value)
         return
 
-    def on_idle(self, message: Idle) -> None:
-        """Handles an Idle event."""
-        # logger.debug('on_idle %s', message)
-        return
+    #def on_timer(self, message: Timer) -> None:
+    #    """Handles a Timer event."""
+    #    logger.debug('on_timer %s', message)
+    #    return
+
+    #def on_idle(self, message: Idle) -> None:
+    #    """Handles an Idle event."""
+    #    # logger.debug('on_idle %s', message)
+    #    return
 
     def action_quit_app(self) -> None:
         """An action to quit the application."""
@@ -148,36 +165,50 @@ class TheApp(App):
         Update the values for tickers
         """
         logger.debug('action_update %s', self)
-        self.status.styles.width = '75%'
-        self.footer_inner.styles.width = '25%'
-        self.status.update('Updating...')
+        self.set_status('Updating...')
         self.run_long_task()
         return
 
-    @work(exclusive=True, thread=True)
+    @work(group='yfinance', exclusive=True, thread=True)
     def run_long_task(self) -> None:
-        """Download ticker info in the background."""
+        """
+        Download ticker info in the background.
+        group: A short string to identify a group of workers.
+        exclusive: Cancel all workers in the same group.
+        thread: Mark the method as a thread worker.
+        """
         self.tkrs = yf.Tickers(list(self.tickers))
         self.tkrs.history(period='1d', repair=True, progress=False)
-
         self.post_message(TaskCompleteMessage())
         return
 
     def on_task_complete_message(self, message: TaskCompleteMessage) -> None:
+        """
+        Called when the background task is complete.
+        """
         self.notify("Background task finished!")
 
-        def update_table(table: DataTable, tkrs) -> None:
+        def update_table(table: DataTable, tkrs: yf.Tickers) -> None:
             for ticker in tkrs.tickers.values():
                 info = ticker.info
                 for k, v in header2ticker_info.items():
-                    assert table.get_cell(ticker.ticker, k) is not None
+                    if table.get_cell(ticker.ticker, k) is None:
+                        continue
+                    if info.get(v) is None:
+                        continue
                     table.update_cell(ticker.ticker, k, info.get(v))
+                table.update_cell(
+                    ticker.ticker,
+                    headers[-1],
+                    '; '.join(analyze_ticker(ticker)),
+                    update_width=True)
+
             return
 
         update_table(self.table, self.tkrs)
-        self.status.styles.width = '25%'
-        self.footer_inner.styles.width = '75%'
-        self.status.update('Updated')
+        self.set_status('Updated')
+        #self.status.styles.width = '25%'
+        #self.footer_inner.styles.width = '75%'
         logger.debug('action_update DONE')
         return
 
@@ -186,6 +217,13 @@ class TheApp(App):
         logger.debug('on_worker_state_changed %s', event)
         return
 
+    def set_status(self, text: str) -> None:
+        """Set the status label text."""
+        logger.debug('set_status %s', text)
+        #self.status.styles.width = '75%'
+        #self.footer_inner.styles.width = '25%'
+        self.status.update(text)
+        return
 
     def action_increase_font_size(self) -> None:
         logger.debug('action_increase_font_size %s', self)
