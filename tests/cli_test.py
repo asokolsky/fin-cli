@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pytickrs import __version__, setup_logging
 
-#from .process_session import ProcessSession
+# from .process_session import ProcessSession
 
 log = setup_logging(__name__)
 
@@ -58,7 +58,7 @@ def run_cli(
 
 class TestCLI(unittest.TestCase):
     """
-    Verify simultons CLI
+    Verify CLI
     """
 
     def test_version(self) -> None:

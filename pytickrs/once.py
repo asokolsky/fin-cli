@@ -2,7 +2,6 @@ import logging
 import sys
 
 # import time
-from argparse import ArgumentParser, RawTextHelpFormatter
 from typing import Any
 
 import yfinance as yf

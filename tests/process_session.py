@@ -4,7 +4,7 @@ supply input to that process and read outputs.
 
 Sample usage:
 
-    with ProcessSession(['.venv/bin/python3', '-m', 'simultons']) as session:
+    with ProcessSession(['.venv/bin/python3', '-m', 'pytickrs']) as session:
         cmd = 'set debug true'
         while not session.wait(0.1):
             stdout, stderr = session.consume_outputs(cmd)

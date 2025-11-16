@@ -15,7 +15,7 @@ epilog = """Examples:
 
 def main() -> int:
     """
-    Run the simulation
+    Get the tickers info and act on it
     """
     ap = ArgumentParser(
         prog='pytickrs',
