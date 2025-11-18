@@ -5,11 +5,13 @@ from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.message import Message
-from textual.widgets import DataTable, Footer, Header, Label
+from textual.widgets import DataTable, Footer, Header, Label, Static
 from textual.worker import Worker
+
 
 from .log import setup_logging
 from .tickers import analyze_ticker, header2ticker_info, headers
+from .split_pane import SplitContainer
 
 log = setup_logging(__name__)
 
@@ -75,7 +77,10 @@ class TheApp(App):
         log.debug('compose %s', self)
         self.tkrs: yf.Tickers | None = None
         yield Header()
-        yield DataTable(cursor_type='row', zebra_stripes=True)
+        yield SplitContainer(
+            before=DataTable(cursor_type='row', zebra_stripes=True, id='tickers'),
+            after=DataTable(cursor_type='row', zebra_stripes=True, id='details'),
+        )
         with Horizontal(id='footer-outer'):
             yield Label('This is the left side label', id='status')
             with Horizontal(id='footer-inner'):
@@ -85,6 +90,7 @@ class TheApp(App):
     def on_mount(self) -> None:
         log.debug('on_mount %s', self)
 
+
         def fill_table(
             table: DataTable, headers: list[str], tickers: list[str]
         ) -> None:
@@ -92,17 +98,20 @@ class TheApp(App):
             for h in headers:
                 table.add_column(h, key=h)
 
-            # add rows with ticker only and set row key
-            for ticker in tickers:
-                row = [ticker if h == headers[0] else '.' for h in headers]
-                table.add_row(*row, key=ticker)
+            # add rows and set row key
+            for row in rows:
+                r = [row if h == headers[0] else '.' for h in headers]
+                table.add_row(*r, key=row)
             return
 
-        self.table = self.query_one(DataTable)
+        self.tickers_table = self.query_one('#tickers', DataTable)
+        self.details_table = self.query_one('#details', DataTable)
         self.status = self.query_one('#status')
         self.footer_inner = self.query_one('#footer-inner')
         self.footer = self.query_one('#footer')
-        fill_table(self.table, headers, sorted(self.tickers))
+        fill_table(self.tickers_table, headers, sorted(self.tickers))
+        details_headers = ['Param', 'Value']
+        fill_table(self.details_table, details_headers, ['foo', 'bar'])
 
         # adjust footer status styles
         self.status.styles.background = self.footer.styles.background
@@ -132,7 +141,7 @@ class TheApp(App):
         Row in the DataTable is highlighted.
         """
         row_key = event.row_key
-        log.debug('Row highlighted: %s', row_key.value)
+        log.debug('Row highlighted: %s %s', row_key.value, event.data_table.id)
         if self.tkrs is not None:
             ticker = self.tkrs.tickers.get(row_key.value)
             if ticker is not None:
@@ -204,7 +213,7 @@ class TheApp(App):
 
             return
 
-        update_table(self.table, self.tkrs)
+        update_table(self.tickers_table, self.tkrs)
         self.set_status('Updated')
         # self.status.styles.width = '25%'
         # self.footer_inner.styles.width = '75%'
