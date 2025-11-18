@@ -1,6 +1,11 @@
 import logging
 import logging.config
+import sys
 from typing import Any
+
+
+def eprint(*args: Any) -> None:
+    print(*args, file=sys.stderr)
 
 
 def setup_logging(
@@ -10,7 +15,15 @@ def setup_logging(
     """
     Setup the logger `logger_name`
     """
-    logging.basicConfig(level=level)
+    logging.basicConfig(
+        filename='main.log',
+        encoding='utf-8',
+        filemode='a',  # 'w'
+        datefmt='%H:%M:%S',
+        format='{asctime} {levelname} {message}',
+        style='{',
+        level=level,
+    )
     logger = logging.getLogger(logger_name)
     if level != logging.NOTSET:
         logger.setLevel(level)

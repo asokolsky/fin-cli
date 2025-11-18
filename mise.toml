@@ -1,5 +1,5 @@
 [tools]
-mypy = '1.18.2'
+mypy = 'latest'
 ruff = 'latest'
 uv = 'latest'
 

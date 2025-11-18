@@ -3,14 +3,32 @@ Run pytickrs
     python -m pytickrs --version
 """
 
+import logging
 import sys
-from argparse import ArgumentParser, RawTextHelpFormatter
+from argparse import ArgumentParser, FileType, RawTextHelpFormatter
 
 from . import __version__
+from .once import run_once
+from .tui import run_tui
 
 epilog = """Examples:
     python -m pytickrs --version
+    python -m pytickrs --once
+    python -m pytickrs
 """
+
+
+def comma_separated_list(arg: str) -> list[str]:
+    return arg.strip().split(',')
+
+
+def load_tickers(f) -> set[str]:
+    tickers: set[str] = set()
+    for line1 in f:
+        line = line1.strip()
+        if line and not line.startswith('#'):
+            tickers.add(line.upper())
+    return tickers
 
 
 def main() -> int:
@@ -41,18 +59,31 @@ def main() -> int:
         action='store_true',
         help='Display module version and exit.',
     )
+    #
+    # '--tickers' and '--tickers-from' are mutually exclusive
+    #
+    group = ap.add_mutually_exclusive_group()
+    group.add_argument(
+        '--tickers', type=comma_separated_list, help='A comma-separated list of tickers'
+    )
+    group.add_argument(
+        '--tickers-from',
+        type=FileType('r'),
+        default='tickers.txt',
+        help='Path to a file with tickers (one per line)',
+    )
+
     args = ap.parse_args()
     if args.version:
         print(__version__)
         return 0
+
+    level = logging.DEBUG if args.verbose else logging.INFO
+    tickers = args.tickers if args.tickers else load_tickers(args.tickers_from)
     if args.once:
-        from .once import run_once
+        return run_once(level, tickers)
 
-        return run_once(args.verbose)
-
-    from .tui import run_tui
-
-    return run_tui(args.verbose)
+    return run_tui(level, tickers)
 
 
 if __name__ == '__main__':

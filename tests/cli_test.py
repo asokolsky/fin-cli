@@ -5,8 +5,6 @@ from pathlib import Path
 
 from pytickrs import __version__, setup_logging
 
-# from .process_session import ProcessSession
-
 log = setup_logging(__name__)
 
 
@@ -67,4 +65,22 @@ class TestCLI(unittest.TestCase):
         # print('out', out)
         # print('err', err)
         self.assertEqual(out.strip(), __version__)
+        return
+
+    def test_help(self) -> None:
+        ec, out, err = run_cli(args=['-h'])
+        self.assertEqual(ec, 0)
+        self.assertNotEqual(out, '')
+        self.assertEqual(err, '')
+        # print('out', out)
+        # print('err', err)
+        return
+
+    def test_single_ticker(self) -> None:
+        ec, out, err = run_cli(args=['--once', '--tickers=AAPL'])
+        self.assertEqual(ec, 0)
+        self.assertNotEqual(out, '')
+        self.assertEqual(err, '')
+        # print('out', out)
+        # print('err', err)
         return

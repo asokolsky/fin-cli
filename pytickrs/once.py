@@ -1,19 +1,10 @@
-import logging
-import sys
-
-# import time
-from typing import Any
-
 import yfinance as yf
 from tabulate import tabulate
 
-from .tickers import analyze_ticker, headers, load_tickers
+from .log import eprint, setup_logging
+from .tickers import analyze_ticker, headers
 
-logger = logging.getLogger(__name__)
-
-
-def eprint(*args: Any) -> None:
-    print(*args, file=sys.stderr)
+log = setup_logging(__name__)
 
 
 epilog = """Examples:
@@ -21,7 +12,7 @@ epilog = """Examples:
 """
 
 
-def process_tickers(logger: logging.Logger, tickers: set[str]) -> None:
+def process_tickers(tickers: set[str]) -> None:
     """
     Process tickers
     """
@@ -58,21 +49,14 @@ def process_tickers(logger: logging.Logger, tickers: set[str]) -> None:
     return
 
 
-def run_once(verbose: bool) -> int:
+def run_once(log_level: int, tickers: set[str]) -> int:
     """
     Main entry point
     """
-    #
-    # parse the command line
-    #
-    level = logging.INFO
-    if verbose:
-        level = logging.DEBUG
-    logging.basicConfig(level=level)
-    logger = logging.getLogger(__name__)
+    log.setLevel(log_level)
+
     try:
-        tickers = load_tickers('tickers.txt')
-        process_tickers(logger, tickers)
+        process_tickers(tickers)
         return 0
 
     except KeyboardInterrupt:

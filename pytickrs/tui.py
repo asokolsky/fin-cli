@@ -1,5 +1,4 @@
-import logging
-import typing
+from typing import ClassVar
 
 import yfinance as yf
 from textual import work
@@ -9,22 +8,11 @@ from textual.message import Message
 from textual.widgets import DataTable, Footer, Header, Label
 from textual.worker import Worker
 
-from .tickers import analyze_ticker, header2ticker_info, headers, load_tickers
+from .log import setup_logging
+from .tickers import analyze_ticker, header2ticker_info, headers
 
-logging.basicConfig(
-    filename='main.log',
-    encoding='utf-8',
-    filemode='a',  # 'w'
-    datefmt='%H:%M:%S',
-    format='{asctime} {levelname} {message}',
-    style='{',
-)
-logger = logging.getLogger(__name__)
-logger.setLevel('DEBUG')
+log = setup_logging(__name__)
 
-# Screen {
-#    align: center middle;
-# }
 CSS = """
 Horizontal#footer-outer {
     height: 1;
@@ -43,9 +31,9 @@ Label#status {
 
 
 class TaskCompleteMessage(Message):
-    """A message indicating the background task is complete."""
-
-    pass
+    """
+    A message indicating the background task is complete.
+    """
 
 
 class TheApp(App):
@@ -65,16 +53,26 @@ class TheApp(App):
     SUB_TITLE = 'The most important app you will ever need'
     CSS = CSS
 
-    BINDINGS: typing.ClassVar = [
+    BINDINGS: ClassVar = [
         ('q', 'quit_app', 'Quit'),
         ('u', 'update', 'Update'),
         ('ctrl+plus', 'increase_font_size', 'Increase Font Size'),
         ('ctrl+minus', 'decrease_font_size', 'Decrease Font Size'),
     ]
 
+    def __init__(self, tickers: set[str]) -> None:
+        super().__init__()
+        self.column_index_selected = 0
+        self.column_sort_reverse = False
+        self.tickers = tickers
+        assert self.tickers
+        return
+
     def compose(self) -> ComposeResult:
-        """Create child widgets for the app."""
-        logger.debug('compose %s', self)
+        """
+        Create child widgets for the app.
+        """
+        log.debug('compose %s', self)
         self.tkrs: yf.Tickers | None = None
         yield Header()
         yield DataTable(cursor_type='row', zebra_stripes=True)
@@ -85,9 +83,11 @@ class TheApp(App):
         return
 
     def on_mount(self) -> None:
-        logger.debug('on_mount %s', self)
+        log.debug('on_mount %s', self)
 
-        def fill_table(table: DataTable, headers, tickers: list[str]) -> None:
+        def fill_table(
+            table: DataTable, headers: list[str], tickers: list[str]
+        ) -> None:
             # add columns and set column key
             for h in headers:
                 table.add_column(h, key=h)
@@ -98,9 +98,6 @@ class TheApp(App):
                 table.add_row(*row, key=ticker)
             return
 
-        self.column_index_selected = 0
-        self.column_sort_reverse = False
-        self.tickers = load_tickers('tickers.txt')
         self.table = self.query_one(DataTable)
         self.status = self.query_one('#status')
         self.footer_inner = self.query_one('#footer-inner')
@@ -116,7 +113,7 @@ class TheApp(App):
         """
         Handles a click on a column header.
         """
-        logger.debug('on_data_table_header_selected %s', message)
+        log.debug('on_data_table_header_selected %s', message)
 
         if self.column_index_selected != message.column_index:
             self.column_sort_reverse = False
@@ -126,8 +123,8 @@ class TheApp(App):
 
         try:
             self.table.sort(message.column_key, reverse=self.column_sort_reverse)
-        except Exception as exc:
-            logger.error('Error sorting table: %s', exc)
+        except Exception:
+            log.exception('Error sorting table:')
         return
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
@@ -135,36 +132,37 @@ class TheApp(App):
         Row in the DataTable is highlighted.
         """
         row_key = event.row_key
-        logger.debug('Row highlighted: %s', row_key.value)
+        log.debug('Row highlighted: %s', row_key.value)
         if self.tkrs is not None:
             ticker = self.tkrs.tickers.get(row_key.value)
             if ticker is not None:
-                logger.debug('Ticker: %s', ticker)
+                log.debug('Ticker: %s', ticker)
                 self.set_status(ticker.info['longName'])
                 return
-        self.set_status(row_key.value)
+        if row_key.value:
+            self.set_status(row_key.value)
         return
 
     # def on_timer(self, message: Timer) -> None:
     #    """Handles a Timer event."""
-    #    logger.debug('on_timer %s', message)
+    #    log.debug('on_timer %s', message)
     #    return
 
     # def on_idle(self, message: Idle) -> None:
     #    """Handles an Idle event."""
-    #    # logger.debug('on_idle %s', message)
+    #    # log.debug('on_idle %s', message)
     #    return
 
     def action_quit_app(self) -> None:
         """An action to quit the application."""
-        logger.debug('action_quit_app %s', self)
+        log.debug('action_quit_app %s', self)
         self.exit()
 
     def action_update(self) -> None:
         """
         Update the values for tickers
         """
-        logger.debug('action_update %s', self)
+        log.debug('action_update %s', self)
         self.set_status('Updating...')
         self.run_long_task()
         return
@@ -210,41 +208,42 @@ class TheApp(App):
         self.set_status('Updated')
         # self.status.styles.width = '25%'
         # self.footer_inner.styles.width = '75%'
-        logger.debug('action_update DONE')
+        log.debug('action_update DONE')
         return
 
     def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
         """Called when the worker state changes."""
-        logger.debug('on_worker_state_changed %s', event)
+        log.debug('on_worker_state_changed %s', event)
         return
 
     def set_status(self, text: str) -> None:
         """Set the status label text."""
-        logger.debug('set_status %s', text)
+        log.debug('set_status %s', text)
         # self.status.styles.width = '75%'
         # self.footer_inner.styles.width = '25%'
         self.status.update(text)
         return
 
     def action_increase_font_size(self) -> None:
-        logger.debug('action_increase_font_size %s', self)
+        log.debug('action_increase_font_size %s', self)
         # current_font_size = float(self.css_vars['font_size'].replace('em', ''))
         # new_font_size = min(current_font_size + 0.1, 2.0)  # Limit max size
         # self.set_css_vars(font_size=f'{new_font_size}em')
         return
 
     def action_decrease_font_size(self) -> None:
-        logger.debug('action_decrease_font_size %s', self)
+        log.debug('action_decrease_font_size %s', self)
         # current_font_size = float(self.css_vars['font_size'].replace('em', ''))
         # new_font_size = max(current_font_size - 0.1, 0.5)  # Limit min size
         # self.set_css_vars(font_size=f'{new_font_size}em')
         return
 
 
-def run_tui(verbose: bool) -> int:
+def run_tui(log_level: int, tickers: set[str]) -> int:
     """
     Main TUI entry point
     """
-    app = TheApp()
+    log.setLevel(log_level)
+    app = TheApp(tickers)
     app.run()
     return 0
