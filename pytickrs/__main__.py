@@ -21,8 +21,6 @@ def comma_separated_list(arg: str) -> list[str]:
     return arg.strip().split(',')
 
 
-
-
 def load_tickers(f) -> set[str]:
     tickers: set[str] = set()
     for line1 in f:
@@ -75,9 +73,7 @@ def main() -> int:
     #
     group2 = ap.add_mutually_exclusive_group()
     group2.add_argument(
-        '--tickers',
-        type=comma_separated_list,
-        help='A comma-separated list of tickers'
+        '--tickers', type=comma_separated_list, help='A comma-separated list of tickers'
     )
     group2.add_argument(
         '--tickers-from',

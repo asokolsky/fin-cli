@@ -1,20 +1,20 @@
-from typing import ClassVar
 import logging
+from typing import ClassVar
 
-from jinja2 import Template
 import yfinance as yf
+from jinja2 import Template
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.message import Message
-from textual.widgets import DataTable, Footer, Header, Label, Markdown, MarkdownViewer
+from textual.widgets import DataTable, Footer, Header, Label, MarkdownViewer
 from textual.worker import Worker
 
 from .log import setup_logging
 from .split_pane import SplitContainer
 from .tickers import analyze_ticker, header2ticker_info, headers
 
-log: logging.Logger|None = None
+log: logging.Logger | None = None
 
 CSS = """
 Horizontal#footer-outer {
@@ -83,7 +83,9 @@ class TheApp(App):
         yield Header()
         yield SplitContainer(
             before=DataTable(cursor_type='row', zebra_stripes=True, id='tickers'),
-            after=MarkdownViewer(id='details', show_table_of_contents=False, open_links=False),
+            after=MarkdownViewer(
+                id='details', show_table_of_contents=False, open_links=False
+            ),
         )
         with Horizontal(id='footer-outer'):
             yield Label('This is the left side label', id='status')
@@ -95,9 +97,7 @@ class TheApp(App):
         assert log is not None
         log.debug('on_mount %s', self)
 
-        def fill_table(
-            table: DataTable, headers: list[str], rows: list[str]
-        ) -> None:
+        def fill_table(table: DataTable, headers: list[str], rows: list[str]) -> None:
             # add columns and set column key
             for h in headers:
                 table.add_column(h, key=h)
@@ -136,7 +136,9 @@ class TheApp(App):
             self.column_sort_reverse = not self.column_sort_reverse
 
         try:
-            self.tickers_table.sort(message.column_key, reverse=self.column_sort_reverse)
+            self.tickers_table.sort(
+                message.column_key, reverse=self.column_sort_reverse
+            )
         except Exception:
             log.exception('Error sorting table:')
         return
