@@ -17,16 +17,12 @@
 {% endif %}
 
 
-|.|.|.|.|
-|-|-|-|-|
-|Prev Close|{{'%.2f' % previousClose}}|Day's Range|{{regularMarketDayRange}}|
-|Open|{{open}}|52 Week Range|{{fiftyTwoWeekRange}}|
-|Bid|{{bid}}|Volume|{{format_num(volume)}}|
-|Ask|{{ask}}|Avg Volume|{{format_num(averageVolume)}}|
-|Market Cap|{{format_num(marketCap)}}|Earnings Date|{{earningsTimestamp}}|
-|Beta|{{beta}}|Forward Dividend & Yield|???|
-|PE (ttm)|{{trailingPE}}|Ex-Dividend Date|{{dividendDate}}|
-|EPS (ttm)|{{'%.2f' % epsTrailingTwelveMonths}}|Target Price|{{targetMeanPrice}}|
+|.|.|.|.|.|.|.|.|
+|-|-|-|-|-|-|-|-|
+|Prev Close|{{'%.2f' % previousClose}}|Day's Range|{{regularMarketDayRange}}|Market Cap|{{format_num(marketCap)}}|Earnings Date|{{format_date(earningsTimestamp)}}|
+|Open|{{open}}|52 Week Range|{{fiftyTwoWeekRange}}|Beta|{{beta}}|Forward Dividend & Yield|???|
+|Bid|{{bid}}|Volume|{{format_num(volume)}}|PE (ttm)|{{'%.2f' % trailingPE}}|Ex-Dividend Date|{{format_date(dividendDate)}}|
+|Ask|{{ask}}|Avg Volume|{{format_num(averageVolume)}}|EPS (ttm)|{{'%.2f' % epsTrailingTwelveMonths}}|Target Price (mean)|{{'%.2f' % targetMeanPrice}}|
 
 ## Business Summary
 
@@ -41,7 +37,7 @@
 {% endfor %}
 {% endif %}
 
-{% if corporateActions %}
+{% if corporateActions != [] %}
 ## Corporate Actions
 {% for action in corporateActions -%}
 ### {{action['header']}}

@@ -1,5 +1,6 @@
 import logging
 from typing import ClassVar
+from datetime import datetime
 
 import yfinance as yf
 from jinja2 import Environment, FileSystemLoader, Template
@@ -173,6 +174,7 @@ class TheApp(App):
         log.debug('update_details %s', ticker)
         info = ticker.info
         tvars = dict(info.items())
+        log.debug('corporateActions: %s', tvars.get('corporateActions'))
         # sanitize data - these are broken for NTDOY
         for key in ['postMarketPrice', 'postMarketChange', 'postMarketChangePercent']:
             if key not in tvars:
@@ -297,8 +299,21 @@ def format_num(num: str) -> str:
         if val < 10000000:
             val = val // 1000
             return f'{val:,d}K'
-        val = val // 1000000
-        return f'{val:,d}M'
+        if val < 10000000000:
+            val = val // 1000000
+            return f'{val:,d}M'
+        if val < 10000000000000:
+            val = val // 1000000000
+            return f'{val:,d}B'
+        val = val // 1000000000000
+        return f'{val:,d}T'
+    except (UndefinedError, ValueError):
+        pass
+    return ''
+
+def format_date(val: str) -> str:
+    try:
+        return datetime.fromtimestamp(int(val)).strftime('%Y-%m-%d')
     except (UndefinedError, ValueError):
         pass
     return ''
@@ -332,6 +347,7 @@ def run_tui(log_level: int, tickers: set[str], details_path: str) -> int:
         log.debug('Environment: %s', env)
         log.debug('Environment.globals: %s', env.globals)
         env.globals['format_num'] = format_num
+        env.globals['format_date'] = format_date
         env.globals['is_defined'] = is_defined
         details_template = env.get_template(details_path)
         app = TheApp(tickers, details_template)
