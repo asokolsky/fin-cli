@@ -4,8 +4,14 @@ ruff = 'latest'
 uv = 'latest'
 
 [env]
-# Set a virtual environment for the project
 _.python.venv = { path = ".venv", create = true }
+
+[tasks.venv]
+description = "Set a virtual environment for the project"
+# _.python.venv = { path = ".venv", create = true }
+run = [
+    'uv sync --group dev'
+]
 
 [tasks.clean]
 description = "Do local clean-up"

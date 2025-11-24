@@ -13,13 +13,18 @@ dependencies = [
 ]
 
 [dependency-groups]
+# uv sync --group dev
 dev = [
     "types-tabulate",
+    "textual-dev",
     "mypy>=1.16.1",
     "ruff>=0.12.1",
     "types-pyyaml>=6.0.12.20250516",
     "typing-inspect>=0.9.0",
 ]
+
+[tool.uv]
+default-groups = ["dev"]
 
 [tool.ruff]
 line-length = 88
@@ -52,8 +57,9 @@ warn_unused_configs = true
 
 [[tool.mypy.overrides]]
 module = [
+    "textual.*",
     "yfinance.*",
-    ".*",
-    "strip_ansi.*"
+    "strip_ansi.*",
+    ".*"
 ]
 ignore_missing_imports = true

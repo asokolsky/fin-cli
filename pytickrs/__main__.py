@@ -5,7 +5,8 @@ Run pytickrs
 
 import logging
 import sys
-from argparse import ArgumentParser, FileType, RawTextHelpFormatter
+from argparse import ArgumentParser, ArgumentTypeError, FileType, RawTextHelpFormatter
+from pathlib import Path
 
 from . import __version__
 from .once import run_once
@@ -15,6 +16,18 @@ epilog = """Examples:
     python -m pytickrs --version
     python -m pytickrs --once --ticker=AAPL,MSFT,GOOG
 """
+
+
+def existing_file_path(path: str) -> bool:
+    """
+    Custom type function for argparse to validate an existing file path.
+    """
+    p = Path(path)
+    if not p.exists():
+        raise ArgumentTypeError(f"File '{path}' does not exist.")
+    if not p.is_file():
+        raise ArgumentTypeError(f"'{path}' is not a file.")
+    return path
 
 
 def comma_separated_list(arg: str) -> list[str]:
@@ -64,7 +77,7 @@ def main() -> int:
     )
     group1.add_argument(
         '--details-template',
-        type=FileType('r'),
+        type=existing_file_path,
         default='details-template.md',
         help='Path to the Jinja details template, default: details-template.md',
     )
@@ -92,7 +105,7 @@ def main() -> int:
     if args.once:
         return run_once(level, tickers)
 
-    return run_tui(level, tickers, args.details_template.read())
+    return run_tui(level, tickers, args.details_template)
 
 
 if __name__ == '__main__':

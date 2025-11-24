@@ -2,7 +2,8 @@ import logging
 from typing import ClassVar
 
 import yfinance as yf
-from jinja2 import Template
+from jinja2 import Environment, FileSystemLoader, Template
+from jinja2.exceptions import TemplateSyntaxError, UndefinedError
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
@@ -10,7 +11,7 @@ from textual.message import Message
 from textual.widgets import DataTable, Footer, Header, Label, MarkdownViewer
 from textual.worker import Worker
 
-from .log import setup_logging
+from .log import eprint, setup_logging
 from .split_pane import SplitContainer
 from .tickers import analyze_ticker, header2ticker_info, headers
 
@@ -63,13 +64,13 @@ class TheApp(App):
         ('ctrl+minus', 'decrease_font_size', 'Decrease Font Size'),
     ]
 
-    def __init__(self, tickers: set[str], details: str) -> None:
+    def __init__(self, tickers: set[str], details_template: Template) -> None:
         super().__init__()
         self.column_index_selected = 0
         self.column_sort_reverse = False
         self.tickers = tickers
         assert self.tickers
-        self.details_template = Template(details)
+        self.details_template = details_template
         assert self.details_template
         return
 
@@ -110,10 +111,10 @@ class TheApp(App):
 
         self.tickers_table = self.query_one('#tickers', DataTable)
         self.details = self.query_one('#details', MarkdownViewer)
-        self.status = self.query_one('#status')
-        self.footer_inner = self.query_one('#footer-inner')
-        self.footer = self.query_one('#footer')
-        fill_table(self.tickers_table, headers, sorted(self.tickers))
+        self.status = self.query_one('#status', Label)
+        # self.footer_inner = self.query_one('#footer-inner')
+        self.footer = self.query_one('#footer', Footer)
+        fill_table(self.tickers_table, list(headers), sorted(self.tickers))
 
         # adjust footer status styles
         self.status.styles.background = self.footer.styles.background
@@ -171,7 +172,13 @@ class TheApp(App):
         assert log is not None
         log.debug('update_details %s', ticker)
         info = ticker.info
-        tvars = {k: v for k, v in info.items()}
+        tvars = dict(info.items())
+        # sanitize data - these are broken for NTDOY
+        for key in ['postMarketPrice', 'postMarketChange', 'postMarketChangePercent']:
+            if key not in tvars:
+                tvars[key] = 0
+            elif tvars[key] == '':
+                tvars[key] = 0
         markdown = self.details_template.render(tvars)
         log.debug('markdown %s', markdown)
         self.details.document.update(markdown)
@@ -279,8 +286,38 @@ class TheApp(App):
         # self.set_css_vars(font_size=f'{new_font_size}em')
         return
 
+#
+# Custom global functions for use in the jinja template
+#
+def format_num(num: str) -> str:
+    try:
+        val = int(num)
+        if val < 10000:
+            return f'{val:,d}'
+        if val < 10000000:
+            val = val // 1000
+            return f'{val:,d}K'
+        val = val // 1000000
+        return f'{val:,d}M'
+    except (UndefinedError, ValueError):
+        pass
+    return ''
 
-def run_tui(log_level: int, tickers: set[str], details: str) -> int:
+def safe(val: str) -> str:
+    try:
+        return val
+    except UndefinedError:
+        pass
+    return ''
+
+def is_defined(val: str) -> bool:
+    try:
+        return True
+    except UndefinedError:
+        pass
+    return False
+
+def run_tui(log_level: int, tickers: set[str], details_path: str) -> int:
     """
     Main TUI entry point
     """
@@ -288,6 +325,21 @@ def run_tui(log_level: int, tickers: set[str], details: str) -> int:
     log = setup_logging(__name__, log_level)
     log.info('Logger: %s', log)
     # log.info('Details Template: %s', details)
-    app = TheApp(tickers, details)
-    app.run()
-    return 0
+
+    try:
+        env = Environment(autoescape=True, loader=FileSystemLoader(''))
+        # define custom global functions for use in the template
+        log.debug('Environment: %s', env)
+        log.debug('Environment.globals: %s', env.globals)
+        env.globals['format_num'] = format_num
+        env.globals['is_defined'] = is_defined
+        details_template = env.get_template(details_path)
+        app = TheApp(tickers, details_template)
+        app.run()
+        return 0
+
+    except TemplateSyntaxError as err:
+        eprint(f"ERROR: syntax error in '{details_path}'")
+        eprint(err)
+
+    return 1

@@ -8,7 +8,7 @@ uv run python -m pytickrs --once
 
 Alternatively use console text UI:
 ```sh
-uv run python -m pytickrs
+uv run python -m pytickrs --tickers=AAPL,GOOG
 ```
 and press `u` to update.
 
