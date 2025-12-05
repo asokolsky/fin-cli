@@ -2,7 +2,7 @@
 
 ## Overview
 
-{% if marketState == 'CLOSED' %}
+{% if marketState != 'REGULAR' %}
 
 |Current Price, Change (Change%)|Post Market Price, Change (Change%)|
 |-------------------------------|-----------------------------------|

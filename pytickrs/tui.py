@@ -14,7 +14,7 @@ from textual.worker import Worker
 
 from .log import eprint, setup_logging
 from .split_pane import SplitContainer
-from .tickers import analyze_ticker, header2ticker_info, headers
+from .tickers import analyze_ticker, header2ticker_info, headers, ticker_info_sanitize_keys
 
 log: logging.Logger | None = None
 
@@ -176,7 +176,7 @@ class TheApp(App):
         tvars = dict(info.items())
         log.debug('corporateActions: %s', tvars.get('corporateActions'))
         # sanitize data - these are broken for NTDOY
-        for key in ['postMarketPrice', 'postMarketChange', 'postMarketChangePercent']:
+        for key in ticker_info_sanitize_keys:
             if key not in tvars:
                 tvars[key] = 0
             elif tvars[key] == '':
@@ -349,6 +349,7 @@ def run_tui(log_level: int, tickers: set[str], details_path: str) -> int:
         env.globals['format_num'] = format_num
         env.globals['format_date'] = format_date
         env.globals['is_defined'] = is_defined
+        env.globals['safe'] = safe
         details_template = env.get_template(details_path)
         app = TheApp(tickers, details_template)
         app.run()

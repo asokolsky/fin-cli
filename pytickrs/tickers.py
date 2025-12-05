@@ -27,6 +27,17 @@ header2ticker_info = {
     'Change %': 'regularMarketChangePercent',
 }
 
+#
+# Ensure these are present to avoid issues with details display
+#
+ticker_info_sanitize_keys = [
+    'postMarketPrice',
+    'postMarketChange',
+    'postMarketChangePercent',
+    'targetMeanPrice',
+    'trailingPE',
+    'epsTrailingTwelveMonths'
+]
 
 def load_tickers(fname: str) -> set[str]:
     """
